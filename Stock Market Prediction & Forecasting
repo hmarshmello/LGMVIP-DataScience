@@ -1,1 +1,72 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
+df = pd.read_csv('NSE-TATAGLOBAL11.csv')
+
+df.head(10) 
+
+df.info()
+
+df.columns = df.columns.str.replace(' ', ' ')
+
+df.head()
+
+df.info()
+
+df['Date'] = pd.to_datetime(df['Date'])
+
+x = df[['Open','High','Low']]
+y = df['Close']
+
+x.head()
+
+y.head()
+
+plt.plot(df['Date'],y)
+plt.xlabel('Year')
+plt.ylabel('Price')
+plt.legend(['Close Price'])
+
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()
+features = scaler.fit_transform(x)
+features = pd.DataFrame(data=features,index=df.index,columns=x.columns)
+features.head()
+
+from sklearn.model_selection import TimeSeriesSplit
+timesplit = TimeSeriesSplit(n_splits=10)
+for train_index, test_index in timesplit.split(features):
+    X_train, X_test = features[:len(train_index)], features[len(train_index): (len(train_index)+len(test_index))]
+    y_train, y_test = y[:len(train_index)].values.ravel(), y[len(train_index): (len(train_index)+len(test_index))].values.ravel()
+    
+    
+trainX = np.array(X_train)
+testX = np.array(X_train)
+
+X_train = trainX.reshape(trainX.shape[0], 1, trainX.shape[1])
+X_test = testX.reshape(testX.shape[0], 1, testX.shape[1])
+
+import tensorflow as tf
+
+import keras
+from keras.layers import LSTM 
+from keras.layers import Dense
+
+lstm = tf.keras.models.Sequential()
+
+lstm.add(LSTM(32, input_shape=(1, trainX.shape[1]), activation='relu', return_sequences=False))
+lstm.add(Dense(1))
+lstm.compile(loss='mean_squared_error', optimizer='adam')
+
+history=lstm.fit(X_train, y_train, epochs=100, batch_size=8, verbose=1,shuffle=False)
+
+y_pred= lstm.predict(X_test)
+
+plt.plot(y_test, label='True Value')
+plt.plot(y_pred, label='Predicted Value')
+plt.title('Prediction by LSTM')
+plt.xlabel('Time')
+plt.ylabel('Scaled Price')
+plt.legend()
+plt.show()
